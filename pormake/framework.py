@@ -19,6 +19,7 @@ class Framework:
         self.bonds = bonds.copy()
         self.bond_types = copy.deepcopy(bond_types)
         self.info = copy.deepcopy(info)
+        self.min_array = None
 
         if wrap:
             self.wrap()
@@ -43,7 +44,7 @@ class Framework:
 
         self.atoms.set_scaled_positions(s)
 
-    def write_cif(self, filename):
+    def write_cif(self, filename, **kwargs):
         """
         Write framework in cif format.
         """
@@ -56,7 +57,10 @@ class Framework:
             path = path.with_suffix(".cif")
 
         try:
-            self._write_cif(path)
+            if "spacegroup_vis" in kwargs:
+                self._write_cif(path, spacegroup_vis=kwargs['spacegroup_vis'])
+            else:
+                self._write_cif(path)
         except Exception as e:
             logger.error(e)
             logger.error(
@@ -67,7 +71,7 @@ class Framework:
             logger.error("Remove invalid CIF: %s", path)
             os.remove(str(path))
 
-    def _write_cif(self, path):
+    def _write_cif(self, path, **kwargs):
         stem = path.stem.replace(" ", "_")
 
         with path.open("w") as f:
@@ -128,11 +132,29 @@ class Framework:
             symbols = self.atoms.symbols
             charges = self.atoms.get_initial_charges()
             frac_coords = self.atoms.get_scaled_positions()
-            for i, (sym, pos, charge) in enumerate(zip(symbols, frac_coords, charges)):
+            for i, (sym, pos, charge) in enumerate(
+                zip(symbols, frac_coords, charges)
+            ):
                 label = "{}{}".format(sym, i)
-                f.write(
-                    "{} {} {:.5f} {:.5f} {:.5f} {:.5f}\n".format(label, sym, *pos, charge)
-                )
+                if "spacegroup_vis" in kwargs:
+                    if kwargs['spacegroup_vis']:
+                        f.write(
+                            "{} {} {:.5f} {:.5f} {:.5f} {:.5f}\n".format(
+                                label, sym, *pos, charge
+                            )
+                        )
+                    if (sym != 'Ne') and (not kwargs['spacegroup_vis']):
+                        f.write(
+                            "{} {} {:.5f} {:.5f} {:.5f} {:.5f}\n".format(
+                                label, sym, *pos, charge
+                            )
+                        )
+                else:
+                    f.write(
+                        "{} {} {:.5f} {:.5f} {:.5f} {:.5f}\n".format(
+                            label, sym, *pos, charge
+                        )
+                    )
 
             f.write("loop_\n")
             f.write("_geom_bond_atom_site_label_1\n")
